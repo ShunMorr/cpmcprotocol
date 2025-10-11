@@ -25,6 +25,8 @@
 
 ## ビルド方法
 
+### ライブラリのビルド
+
 ```bash
 # リポジトリのクローン
 git clone https://github.com/your-repo/cpmcprotocol.git
@@ -39,6 +41,55 @@ cmake --build .
 
 # テストの実行（オプション）
 ctest --output-on-failure
+```
+
+### システムへのインストール
+
+```bash
+# ビルド後、システムにインストール
+sudo cmake --install build
+
+# またはインストール先を指定
+cmake --install build --prefix /path/to/install
+```
+
+### 他のプロジェクトでの使用
+
+インストール後、他のCMakeプロジェクトから以下のように利用できます：
+
+**CMakeLists.txt:**
+```cmake
+cmake_minimum_required(VERSION 3.18)
+project(your_app)
+
+set(CMAKE_CXX_STANDARD 17)
+
+# cpmcprotocolパッケージを検索
+find_package(cpmcprotocol REQUIRED)
+
+add_executable(your_app main.cpp)
+
+# cpmcprotocolライブラリをリンク
+target_link_libraries(your_app PRIVATE cpmcprotocol::cpmcprotocol)
+```
+
+**main.cpp:**
+```cpp
+#include <cpmcprotocol/mc_client.hpp>
+#include <cpmcprotocol/session_config.hpp>
+
+int main() {
+    cpmcprotocol::McClient client;
+    // ... あなたのコード ...
+    return 0;
+}
+```
+
+標準以外の場所にインストールした場合は、ビルド時に`CMAKE_PREFIX_PATH`を指定します：
+
+```bash
+cmake -B build -DCMAKE_PREFIX_PATH=/path/to/install
+cmake --build build
 ```
 
 ## クイックスタート
