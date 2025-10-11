@@ -19,6 +19,8 @@ int main() {
         {DeviceAddress{"D2", DeviceType::DoubleWord}, ValueFormat::Int32(), static_cast<int32_t>(0x9ABC5678)},
         {DeviceAddress{"D4", DeviceType::Word}, ValueFormat::Float32(), 1.0f},
         {DeviceAddress{"D6", DeviceType::DoubleWord}, ValueFormat::Float64(), 1.0},
+        {DeviceAddress{"D8", DeviceType::Word}, ValueFormat::Int64(), static_cast<int64_t>(0x123456789ABCDEF0LL)},
+        {DeviceAddress{"D12", DeviceType::Word}, ValueFormat::UInt64(), static_cast<uint64_t>(0x0FEDCBA987654321ULL)},
         {DeviceAddress{"D10", DeviceType::Word}, ValueFormat::AsciiString(5), std::string("HELLO")},
         {DeviceAddress{"D20", DeviceType::Word}, ValueFormat::RawWords(2), std::vector<std::uint16_t>{0xAA55, 0x0F0F}},
         {DeviceAddress{"D30", DeviceType::Bit}, ValueFormat::BitArray(3), std::vector<bool>{true, false, true}}
@@ -32,6 +34,8 @@ int main() {
         0x5678, 0x9ABC,     // Int32 (little-endian words)
         0x0000, 0x3F80,     // Float32 (1.0f)
         0x0000, 0x0000, 0x0000, 0x3FF0, // Float64 (1.0)
+        0xDEF0, 0x9ABC, 0x5678, 0x1234, // Int64
+        0x4321, 0x8765, 0xCBA9, 0x0FED, // UInt64
         0x4548, 0x4C4C, 0x004F,         // ASCII "HELLO"
         0xAA55, 0x0F0F,                 // Raw words
         0x0010, 0x0010                  // Bit array values packed per pymcprotocol
@@ -45,6 +49,8 @@ int main() {
         {DeviceAddress{"D2", DeviceType::DoubleWord}, ValueFormat::Int32()},
         {DeviceAddress{"D4", DeviceType::Word}, ValueFormat::Float32()},
         {DeviceAddress{"D6", DeviceType::DoubleWord}, ValueFormat::Float64()},
+        {DeviceAddress{"D8", DeviceType::Word}, ValueFormat::Int64()},
+        {DeviceAddress{"D12", DeviceType::Word}, ValueFormat::UInt64()},
         {DeviceAddress{"D10", DeviceType::Word}, ValueFormat::AsciiString(5)},
         {DeviceAddress{"D20", DeviceType::Word}, ValueFormat::RawWords(2)},
         {DeviceAddress{"D30", DeviceType::Bit}, ValueFormat::BitArray(3)}
@@ -56,10 +62,12 @@ int main() {
     assert(std::get<int32_t>(decoded[2]) == static_cast<int32_t>(0x9ABC5678));
     assert(std::fabs(std::get<float>(decoded[3]) - 1.0f) < 1e-6f);
     assert(std::fabs(std::get<double>(decoded[4]) - 1.0) < 1e-12);
-    assert(std::get<std::string>(decoded[5]) == "HELLO");
-    auto raw = std::get<std::vector<std::uint16_t>>(decoded[6]);
+    assert(std::get<int64_t>(decoded[5]) == static_cast<int64_t>(0x123456789ABCDEF0LL));
+    assert(std::get<uint64_t>(decoded[6]) == static_cast<uint64_t>(0x0FEDCBA987654321ULL));
+    assert(std::get<std::string>(decoded[7]) == "HELLO");
+    auto raw = std::get<std::vector<std::uint16_t>>(decoded[8]);
     assert(raw.size() == 2 && raw[0] == 0xAA55 && raw[1] == 0x0F0F);
-    auto bits = std::get<std::vector<bool>>(decoded[7]);
+    auto bits = std::get<std::vector<bool>>(decoded[9]);
     assert(bits.size() == 3 && bits[0] && !bits[1] && bits[2]);
 
     // Binary / ASCII helper verification

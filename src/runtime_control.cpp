@@ -2,6 +2,7 @@
 
 namespace cpmcprotocol {
 
-// TODO: convert RuntimeControl abstractions into MC protocol command frames.
+// RuntimeControl command conversion is implemented in mc_client.cpp
+// See McClient::applyRuntimeControl() for MC protocol frame generation
 
 } // namespace cpmcprotocol

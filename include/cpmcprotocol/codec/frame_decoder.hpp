@@ -31,7 +31,7 @@ class FrameDecoder {
 public:
     FrameDecoder();
 
-    // TODO: parse response payload and extract values per spec Section 9
+    // Parse MC protocol response frames
     BatchReadResponse parseBatchReadResponse(const std::vector<std::uint8_t>& frame) const;
     BatchWriteResponse parseBatchWriteResponse(const std::vector<std::uint8_t>& frame) const;
     RandomReadResponse parseRandomReadResponse(const std::vector<std::uint8_t>& frame) const;

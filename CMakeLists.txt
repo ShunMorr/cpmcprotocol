@@ -8,6 +8,7 @@ add_library(cpmcprotocol
     src/mc_client.cpp
     src/transport.cpp
     src/runtime_control.cpp
+    src/session_config.cpp
     src/device_catalog.cpp
     src/codec/frame_encoder.cpp
     src/codec/frame_decoder.cpp

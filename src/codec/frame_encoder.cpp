@@ -225,14 +225,11 @@ std::vector<std::uint8_t> FrameEncoder::makeBatchWriteRequest(const SessionConfi
 
 std::vector<std::uint8_t> FrameEncoder::makeRandomReadRequest(const SessionConfig& config,
                                                               const RandomDeviceRequest& request) const {
-    if (!request.bit_devices.empty()) {
-        // pymcprotocol 互換の都合でランダムビットアクセスは未実装。
-        throw std::invalid_argument("Random read for bit devices is not supported");
-    }
-
     const auto subcommand = randomWordSubcommand(config.series);
-    const std::uint16_t word_count = static_cast<std::uint16_t>(request.word_devices.size());
-    const std::uint16_t dword_count = static_cast<std::uint16_t>(request.dword_devices.size());
+    const std::uint8_t word_count = static_cast<std::uint8_t>(request.word_devices.size());
+    const std::uint8_t dword_count = static_cast<std::uint8_t>(request.dword_devices.size());
+    const std::uint8_t lword_count = static_cast<std::uint8_t>(request.lword_devices.size());
+    const std::uint8_t bit_count = static_cast<std::uint8_t>(request.bit_devices.size());
 
     if (config.mode == CommunicationMode::Ascii) {
         std::string req;
@@ -240,6 +237,8 @@ std::vector<std::uint8_t> FrameEncoder::makeRandomReadRequest(const SessionConfi
         req += toHex(subcommand, 4);
         req += toHex(word_count, 2);
         req += toHex(dword_count, 2);
+        req += toHex(lword_count, 2);
+        req += toHex(bit_count, 2);
         for (const auto& device : request.word_devices) {
             const auto info = device_code_map_.resolveAscii(config.series, device.name);
             const auto number = parseDeviceNumber(device.name, info.number_base);
@@ -250,20 +249,42 @@ std::vector<std::uint8_t> FrameEncoder::makeRandomReadRequest(const SessionConfi
             const auto number = parseDeviceNumber(device.name, info.number_base);
             appendDeviceAscii(req, info, number);
         }
+        for (const auto& device : request.lword_devices) {
+            const auto info = device_code_map_.resolveAscii(config.series, device.name);
+            const auto number = parseDeviceNumber(device.name, info.number_base);
+            appendDeviceAscii(req, info, number);
+        }
+        for (const auto& device : request.bit_devices) {
+            const auto info = device_code_map_.resolveAscii(config.series, device.name);
+            const auto number = parseDeviceNumber(device.name, info.number_base);
+            appendDeviceAscii(req, info, number);
+        }
         return buildAsciiFrame(config, req);
     }
 
     std::vector<std::uint8_t> req;
     appendLittleEndian(req, 0x0403, 2);
     appendLittleEndian(req, subcommand, 2);
-    req.push_back(static_cast<std::uint8_t>(word_count));
-    req.push_back(static_cast<std::uint8_t>(dword_count));
+    req.push_back(word_count);
+    req.push_back(dword_count);
+    req.push_back(lword_count);
+    req.push_back(bit_count);
     for (const auto& device : request.word_devices) {
         const auto info = device_code_map_.resolveBinary(config.series, device.name);
         const auto number = parseDeviceNumber(device.name, info.number_base);
         appendDeviceBinary(req, info, number);
     }
     for (const auto& device : request.dword_devices) {
+        const auto info = device_code_map_.resolveBinary(config.series, device.name);
+        const auto number = parseDeviceNumber(device.name, info.number_base);
+        appendDeviceBinary(req, info, number);
+    }
+    for (const auto& device : request.lword_devices) {
+        const auto info = device_code_map_.resolveBinary(config.series, device.name);
+        const auto number = parseDeviceNumber(device.name, info.number_base);
+        appendDeviceBinary(req, info, number);
+    }
+    for (const auto& device : request.bit_devices) {
         const auto info = device_code_map_.resolveBinary(config.series, device.name);
         const auto number = parseDeviceNumber(device.name, info.number_base);
         appendDeviceBinary(req, info, number);
@@ -275,21 +296,26 @@ std::vector<std::uint8_t> FrameEncoder::makeRandomWriteRequest(const SessionConf
                                                                const RandomDeviceRequest& request,
                                                                const std::vector<std::uint16_t>& word_data,
                                                                const std::vector<std::uint32_t>& dword_data,
+                                                               const std::vector<std::uint64_t>& lword_data,
                                                                const std::vector<bool>& bit_data) const {
-    if (!request.bit_devices.empty()) {
-        // ランダムビット書き込みも現状サポートしていないことを明示する。
-        throw std::invalid_argument("Random bit write is not implemented yet");
-    }
     if (request.word_devices.size() != word_data.size()) {
         throw std::invalid_argument("word device/value count mismatch");
     }
     if (request.dword_devices.size() != dword_data.size()) {
         throw std::invalid_argument("dword device/value count mismatch");
     }
+    if (request.lword_devices.size() != lword_data.size()) {
+        throw std::invalid_argument("lword device/value count mismatch");
+    }
+    if (request.bit_devices.size() != bit_data.size()) {
+        throw std::invalid_argument("bit device/value count mismatch");
+    }
 
     const auto subcommand = randomWordSubcommand(config.series);
-    const std::uint16_t word_count = static_cast<std::uint16_t>(request.word_devices.size());
-    const std::uint16_t dword_count = static_cast<std::uint16_t>(request.dword_devices.size());
+    const std::uint8_t word_count = static_cast<std::uint8_t>(request.word_devices.size());
+    const std::uint8_t dword_count = static_cast<std::uint8_t>(request.dword_devices.size());
+    const std::uint8_t lword_count = static_cast<std::uint8_t>(request.lword_devices.size());
+    const std::uint8_t bit_count = static_cast<std::uint8_t>(request.bit_devices.size());
 
     if (config.mode == CommunicationMode::Ascii) {
         std::string req;
@@ -297,6 +323,8 @@ std::vector<std::uint8_t> FrameEncoder::makeRandomWriteRequest(const SessionConf
         req += toHex(subcommand, 4);
         req += toHex(word_count, 2);
         req += toHex(dword_count, 2);
+        req += toHex(lword_count, 2);
+        req += toHex(bit_count, 2);
         for (std::size_t i = 0; i < request.word_devices.size(); ++i) {
             const auto& device = request.word_devices[i];
             const auto info = device_code_map_.resolveAscii(config.series, device.name);
@@ -311,14 +339,31 @@ std::vector<std::uint8_t> FrameEncoder::makeRandomWriteRequest(const SessionConf
             appendDeviceAscii(req, info, number);
             req += toHex(dword_data[i], 8);
         }
+        for (std::size_t i = 0; i < request.lword_devices.size(); ++i) {
+            const auto& device = request.lword_devices[i];
+            const auto info = device_code_map_.resolveAscii(config.series, device.name);
+            const auto number = parseDeviceNumber(device.name, info.number_base);
+            appendDeviceAscii(req, info, number);
+            req += toHex(static_cast<std::uint32_t>(lword_data[i] & 0xFFFFFFFF), 8);
+            req += toHex(static_cast<std::uint32_t>((lword_data[i] >> 32) & 0xFFFFFFFF), 8);
+        }
+        for (std::size_t i = 0; i < request.bit_devices.size(); ++i) {
+            const auto& device = request.bit_devices[i];
+            const auto info = device_code_map_.resolveAscii(config.series, device.name);
+            const auto number = parseDeviceNumber(device.name, info.number_base);
+            appendDeviceAscii(req, info, number);
+            req += bit_data[i] ? "0001" : "0000";
+        }
         return buildAsciiFrame(config, req);
     }
 
     std::vector<std::uint8_t> req;
     appendLittleEndian(req, 0x1402, 2);
     appendLittleEndian(req, subcommand, 2);
-    req.push_back(static_cast<std::uint8_t>(word_count));
-    req.push_back(static_cast<std::uint8_t>(dword_count));
+    req.push_back(word_count);
+    req.push_back(dword_count);
+    req.push_back(lword_count);
+    req.push_back(bit_count);
     for (std::size_t i = 0; i < request.word_devices.size(); ++i) {
         const auto& device = request.word_devices[i];
         const auto info = device_code_map_.resolveBinary(config.series, device.name);
@@ -333,7 +378,41 @@ std::vector<std::uint8_t> FrameEncoder::makeRandomWriteRequest(const SessionConf
         appendDeviceBinary(req, info, number);
         appendLittleEndian(req, dword_data[i], 4);
     }
+    for (std::size_t i = 0; i < request.lword_devices.size(); ++i) {
+        const auto& device = request.lword_devices[i];
+        const auto info = device_code_map_.resolveBinary(config.series, device.name);
+        const auto number = parseDeviceNumber(device.name, info.number_base);
+        appendDeviceBinary(req, info, number);
+        appendLittleEndian(req, lword_data[i], 8);
+    }
+    for (std::size_t i = 0; i < request.bit_devices.size(); ++i) {
+        const auto& device = request.bit_devices[i];
+        const auto info = device_code_map_.resolveBinary(config.series, device.name);
+        const auto number = parseDeviceNumber(device.name, info.number_base);
+        appendDeviceBinary(req, info, number);
+        appendLittleEndian(req, static_cast<std::uint16_t>(bit_data[i] ? 1 : 0), 2);
+    }
     return buildBinaryFrame(config, req);
+}
+
+std::vector<std::uint8_t> FrameEncoder::makeSimpleCommand(const SessionConfig& config,
+                                                          std::uint16_t command,
+                                                          std::uint16_t subcommand,
+                                                          const std::vector<std::uint8_t>& binary_payload,
+                                                          const std::string& ascii_payload) const {
+    if (config.mode == CommunicationMode::Ascii) {
+        std::string request;
+        request += toHex(command, 4);
+        request += toHex(subcommand, 4);
+        request += ascii_payload;
+        return buildAsciiFrame(config, request);
+    }
+
+    std::vector<std::uint8_t> request;
+    appendLittleEndian(request, command, 2);
+    appendLittleEndian(request, subcommand, 2);
+    request.insert(request.end(), binary_payload.begin(), binary_payload.end());
+    return buildBinaryFrame(config, request);
 }
 
 } // namespace cpmcprotocol::codec

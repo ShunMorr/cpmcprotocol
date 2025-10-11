@@ -111,8 +111,9 @@ int main() {
 
     std::vector<std::uint16_t> random_word_values{0x1111, 0x2222};
     std::vector<std::uint32_t> random_dword_values{0x33334444};
+    std::vector<std::uint64_t> random_lword_values;
     std::vector<bool> random_bit_values;
-    auto random_write_frame = encoder.makeRandomWriteRequest(config, random_request, random_word_values, random_dword_values, random_bit_values);
+    auto random_write_frame = encoder.makeRandomWriteRequest(config, random_request, random_word_values, random_dword_values, random_lword_values, random_bit_values);
     assert(random_write_frame.size() > random_read_frame.size());
 
     // Verify diagnostic data handling for binary frame

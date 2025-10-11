@@ -8,9 +8,7 @@
 
 namespace cpmcprotocol {
 
-namespace {
-
-std::size_t wordsRequired(const ValueFormat& format) {
+std::size_t ValueCodec::requiredWords(const ValueFormat& format) {
     switch (format.type) {
         case ValueType::Int16:
         case ValueType::UInt16:
@@ -20,6 +18,8 @@ std::size_t wordsRequired(const ValueFormat& format) {
         case ValueType::Float32:
             return 2;
         case ValueType::Float64:
+        case ValueType::Int64:
+        case ValueType::UInt64:
             return 4;
         case ValueType::AsciiString: {
             if (format.parameter == 0) {
@@ -41,6 +41,8 @@ std::size_t wordsRequired(const ValueFormat& format) {
     throw std::invalid_argument("Unsupported ValueType");
 }
 
+namespace {
+
 std::string toHexPadded(std::uint32_t value, std::size_t width) {
     std::ostringstream oss;
     oss << std::uppercase << std::hex;
@@ -58,7 +60,7 @@ std::vector<DeviceValue> ValueCodec::decode(const DeviceReadPlan& plan, const st
 
     std::size_t offset = 0;
     for (const auto& entry : plan) {
-        const std::size_t required = wordsRequired(entry.format);
+        const std::size_t required = requiredWords(entry.format);
         if (offset + required > words.size()) {
             throw std::invalid_argument("Insufficient word data for decode");
         }
@@ -104,6 +106,22 @@ std::vector<DeviceValue> ValueCodec::decode(const DeviceReadPlan& plan, const st
                 result.emplace_back(value);
                 break;
             }
+            case ValueType::Int64: {
+                std::uint64_t raw = static_cast<std::uint64_t>(base[0]) |
+                                    (static_cast<std::uint64_t>(base[1]) << 16) |
+                                    (static_cast<std::uint64_t>(base[2]) << 32) |
+                                    (static_cast<std::uint64_t>(base[3]) << 48);
+                result.emplace_back(static_cast<int64_t>(raw));
+                break;
+            }
+            case ValueType::UInt64: {
+                std::uint64_t raw = static_cast<std::uint64_t>(base[0]) |
+                                    (static_cast<std::uint64_t>(base[1]) << 16) |
+                                    (static_cast<std::uint64_t>(base[2]) << 32) |
+                                    (static_cast<std::uint64_t>(base[3]) << 48);
+                result.emplace_back(raw);
+                break;
+            }
             case ValueType::AsciiString: {
                 const std::size_t length = entry.format.parameter;
                 std::string text;
@@ -137,17 +155,25 @@ std::vector<DeviceValue> ValueCodec::decode(const DeviceReadPlan& plan, const st
                 const std::size_t bit_count = entry.format.parameter;
                 std::vector<bool> bits;
                 bits.reserve(bit_count);
-                for (std::size_t i = 0; i < required; ++i) {
-                    const std::uint16_t word = base[i];
-                    const std::uint8_t packed = static_cast<std::uint8_t>(word & 0xFF);
-                    const std::size_t even_index = 2 * i;
-                    // 上位ニブルが偶数番ビット、下位ニブルが奇数番ビットを表す。
-                    if (even_index < bit_count) {
-                        bits.push_back(((packed >> 4) & 0x1) != 0);
-                    }
-                    const std::size_t odd_index = even_index + 1;
-                    if (odd_index < bit_count) {
-                        bits.push_back((packed & 0x1) != 0);
+
+                // ランダムアクセスの場合: 各ビットが1ワードとして扱われる
+                if (bit_count == 1 && required == 1) {
+                    // Single bit in random access: stored in lowest bit of word
+                    bits.push_back((base[0] & 0x1) != 0);
+                } else {
+                    // バッチアクセスの場合: 複数ビットが詰め込まれた形式
+                    for (std::size_t i = 0; i < required; ++i) {
+                        const std::uint16_t word = base[i];
+                        const std::uint8_t packed = static_cast<std::uint8_t>(word & 0xFF);
+                        const std::size_t even_index = 2 * i;
+                        // 上位ニブルが偶数番ビット、下位ニブルが奇数番ビットを表す。
+                        if (even_index < bit_count) {
+                            bits.push_back(((packed >> 4) & 0x1) != 0);
+                        }
+                        const std::size_t odd_index = even_index + 1;
+                        if (odd_index < bit_count) {
+                            bits.push_back((packed & 0x1) != 0);
+                        }
                     }
                 }
                 result.emplace_back(std::move(bits));
@@ -179,7 +205,7 @@ static const std::uint16_t* expectWordValue(const DeviceValue& value, std::uint1
 std::vector<std::uint16_t> ValueCodec::encode(const DeviceWritePlan& plan) const {
     std::vector<std::uint16_t> words;
     for (const auto& entry : plan) {
-        const std::size_t required = wordsRequired(entry.format);
+        const std::size_t required = requiredWords(entry.format);
         switch (entry.format.type) {
             case ValueType::Int16:
             case ValueType::UInt16: {
@@ -227,6 +253,26 @@ std::vector<std::uint16_t> ValueCodec::encode(const DeviceWritePlan& plan) const
                 double val = std::get<double>(entry.value);
                 std::uint64_t raw;
                 std::memcpy(&raw, &val, sizeof(double));
+                for (int i = 0; i < 4; ++i) {
+                    words.push_back(static_cast<std::uint16_t>((raw >> (16 * i)) & 0xFFFF));
+                }
+                break;
+            }
+            case ValueType::Int64: {
+                if (!std::holds_alternative<int64_t>(entry.value)) {
+                    throw std::invalid_argument("DeviceValue does not match Int64 format");
+                }
+                std::uint64_t raw = static_cast<std::uint64_t>(std::get<int64_t>(entry.value));
+                for (int i = 0; i < 4; ++i) {
+                    words.push_back(static_cast<std::uint16_t>((raw >> (16 * i)) & 0xFFFF));
+                }
+                break;
+            }
+            case ValueType::UInt64: {
+                if (!std::holds_alternative<uint64_t>(entry.value)) {
+                    throw std::invalid_argument("DeviceValue does not match UInt64 format");
+                }
+                std::uint64_t raw = std::get<uint64_t>(entry.value);
                 for (int i = 0; i < 4; ++i) {
                     words.push_back(static_cast<std::uint16_t>((raw >> (16 * i)) & 0xFFFF));
                 }

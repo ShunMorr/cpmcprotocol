@@ -22,6 +22,14 @@ target_link_libraries(test_value_codec PRIVATE cpmcprotocol cpmcprotocol_test_su
 
 add_test(NAME ValueCodec COMMAND test_value_codec)
 
+add_executable(test_session_config
+    unit/test_session_config.cpp
+)
+
+target_link_libraries(test_session_config PRIVATE cpmcprotocol cpmcprotocol_test_support)
+
+add_test(NAME SessionConfig COMMAND test_session_config)
+
 add_executable(test_transport_loopback
     integration/test_transport_loopback.cpp
 )
@@ -29,3 +37,11 @@ add_executable(test_transport_loopback
 target_link_libraries(test_transport_loopback PRIVATE cpmcprotocol cpmcprotocol_test_support)
 
 add_test(NAME TransportLoopback COMMAND test_transport_loopback)
+
+add_executable(test_mc_client
+    integration/test_mc_client.cpp
+)
+
+target_link_libraries(test_mc_client PRIVATE cpmcprotocol cpmcprotocol_test_support)
+
+add_test(NAME McClient COMMAND test_mc_client)

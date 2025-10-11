@@ -3,7 +3,6 @@
 ## 1. 背景と目的
 - MC プロトコル (MELSEC Communication Protocol) を用いて PC アプリケーションから三菱電機製 PLC を制御できる C++ 向け通信パッケージを作成する。
 - 本パッケージは iQ-R シリーズの 3E フレームインターフェースを主対象としつつ、同プロトコルに対応した他シリーズ (Q/L/QnA/iQ-L) への拡張性を維持する。
-- 既存の C/C++ 実装である `sample/libslmp2` (libslmp / libmelcli) および Python 実装 `sample/pymcprotocol` を参照し、互換性と機能範囲を整理する。
 
 ## 2. スコープ
 - 3E フレーム (TCP/IP) を用いた iQ-R シリーズ PLC との通信確立・維持。
@@ -14,8 +13,6 @@
 - プロトコルスタック、エラー処理、ロギング、テスト戦略の整理。
 
 ## 3. 参考資料
-- `sample/libslmp2/doc/mainpage.dox` — SLMP コマンド/フレーム構造および MELSEC クライアントライブラリの提供機能。
-- `sample/pymcprotocol/README.md`, `sample/pymcprotocol/src/pymcprotocol/type3e.py` — 3E/4E 実装の具体的な要求値、デバイスアクセス API、リモート操作手順。
 - 三菱電機「SLMP (Seamless Message Protocol) Specifications (Overview) BAP-C2006ENG-001-J」および MC プロトコル Q/L/iQ-R 3E Frame Reference。
 
 ## 4. 用語定義
@@ -26,32 +23,35 @@
 
 ## 5. 機能要件
 - **接続管理**
-  - TCP/IP ベースのソケット接続 (`connect`, `disconnect`, `reconnect`).
-  - タイムアウト、再試行、キープアライブ設定の管理。
-  - ネットワーク番号、PC 番号、モジュール I/O 番号、モジュールステーション番号の設定 API。
+  - TCP/IP ベースのソケット接続 (`connect`, `disconnect`, `reconnect`). ✅ 実装済
+  - タイムアウト、再試行、キープアライブ設定の管理。✅ 実装済
+  - ネットワーク番号、PC 番号、モジュール I/O 番号、モジュールステーション番号の設定 API。✅ 実装済
+  - **SessionConfig検証機能（実装済）**: `isValid()`, `validate()`, `getValidationErrors()` メソッドによる設定値の包括的検証。
 - **通信プロトコル**
-  - サブヘッダー 0x5000/0x5003 (3E バイナリ/ASCII) への対応。
-  - 要求フレーム生成および応答フレーム解析 (libslmp `slmpcodec` 相当)。
-  - バイナリモードをデフォルトとし、ASCII モード切替 API を提供。
+  - サブヘッダー 0x5000/0x5003 (3E バイナリ/ASCII) への対応。✅ 実装済
+  - 要求フレーム生成および応答フレーム解析 (libslmp `slmpcodec` 相当)。✅ 実装済
+  - バイナリモードをデフォルトとし、ASCII モード切替 API を提供。✅ 実装済
 - **デバイスアクセス**
-  - 逐次読出し (`batchReadWord`, `batchReadBit`) および書込み。
-  - 非連続デバイスへのランダム読出し／書込み (Type3E `randomread`, `randomwrite` 参照)。
-  - バッファメモリ(F/デバイス) のブロックアクセス。
-  - 設定可能なデータ型: ビット、ワード、ダブルワード、シングル/ダブルプリシジョン (必要に応じ 2's complement 変換)。
+  - 逐次読出し (`batchReadWord`, `batchReadBit`) および書込み。✅ 実装済
+  - 非連続デバイスへのランダム読出し／書込み (Type3E `randomread`, `randomwrite` 参照)。✅ 実装済
+  - バッファメモリ(F/デバイス) のブロックアクセス。✅ 実装済
+  - 設定可能なデータ型: ビット、ワード、ダブルワード、ロングワード（64bit）、シングル/ダブルプリシジョン (必要に応じ 2's complement 変換)。✅ 実装済
+  - **11種類のデータ型サポート（実装済）**: Int8/16/32/64, UInt8/16/32/64, Float32/64, BitArray
+  - **デバイスカタログ機能（実装済）**: `getDeviceType()`, `isValidDeviceName()`, `normalizeDeviceName()`, `makeDeviceAddress()`, `makeDeviceRange()` 等のヘルパー関数。
 - **ランタイム操作**
-  - `remote_run`, `remote_stop`, `remote_pause`, `remote_reset`, `remote_latch_clear`。
-  - `remote_unlock`/`remote_lock` を含むパスワード管理 (iQ-R は 32 文字まで)。
-  - CPU タイプ読出し (`read_cputype`)。
+  - `remote_run`, `remote_stop`, `remote_pause`, `remote_reset`, `remote_latch_clear`。✅ 実装済
+  - `remote_unlock`/`remote_lock` を含むパスワード管理 (iQ-R は 32 文字まで)。🔲 未実装
+  - CPU タイプ読出し (`read_cputype`)。✅ 実装済
 - **デバイス定義**
-  - デバイスコードと基数マップを libslmp `cmdcode.h` および pymcprotocol `mcprotocolconst.py` を基に整理。
-  - iQ-R 系の 4 バイトデバイス番号、その他シリーズの 3 バイト番号を判別。
+  - デバイスコードと基数マップを libslmp `cmdcode.h` および pymcprotocol `mcprotocolconst.py` を基に整理。✅ 実装済
+  - iQ-R 系の 4 バイトデバイス番号、その他シリーズの 3 バイト番号を判別。✅ 実装済
 - **エラー処理**
-  - MC 応答コード(終了コード)のデコードと例外化。
-  - ソケット例外・タイムアウトの体系化。
-  - 再送戦略 (必要に応じ指数バックオフ)。
+  - MC 応答コード(終了コード)のデコードと例外化。✅ 実装済
+  - ソケット例外・タイムアウトの体系化。✅ 実装済
+  - 再送戦略 (必要に応じ指数バックオフ)。🔲 未実装（アプリケーション層で実装可能）
 - **診断 / ロギング**
-  - 送受信フレームの HEX ダンプ (デバッグ用)。
-  - 操作ログ、エラーコード、リトライ履歴。
+  - 送受信フレームの HEX ダンプ (デバッグ用)。🔲 未実装
+  - 操作ログ、エラーコード、リトライ履歴。🔲 未実装
 
 ## 6. 非機能要件
 - **パフォーマンス**: 連続読出しで 10ms オーダーのラウンドトリップを目標 (LAN 内)。
@@ -73,25 +73,27 @@
 - **Configuration**: YAML/JSON 等のロード対応を検討 (初版はプログラム API のみ)。
 
 ## 8. API デザイン指針
-- `McSessionConfig` — 接続パラメータ構造体 (IP, Port, Network, PC, DestIO, DestSta, Timeout)。
-- `McClient` クラス
-  - `connect(const McSessionConfig&)`
-  - `disconnect()`
-  - `setAccessOption(const AccessOption&)` — `Type3E.setaccessopt` に相当。
-  - `readWords(DeviceRange range)` / `readBits(DeviceRange range)`
-  - `writeWords(DeviceRange range, span<uint16_t> values)`
-  - `randomRead(const DeviceReadPlan&)` / `randomWrite(const DeviceWritePlan&)`
-  - `remoteRun(RemoteRunOption)`
-  - `remoteStop()`, `remotePause()`, `remoteReset()`, `remoteLatchClear()`
-  - `remoteLock(const std::string& password)`, `remoteUnlock(...)`
-  - `readCpuType() -> CpuInfo`
-- `DeviceRange` / `RandomDeviceRequest` 等のヘルパ構造を用意。
-- 例外型: `McProtocolError` (終了コード付き)、`TransportError`、`TimeoutError` など。
-- `ValueFormat` 列挙 (例: `Int16`, `UInt16`, `Int32`, `UInt32`, `Float32`, `Float64`, `AsciiString(n)`, `RawWords(n)` など) と `DeviceValue` (`std::variant` ベース) を定義。
-- Value Codec 層の公開インターフェース:
-  - `std::vector<std::uint16_t> encode(const DeviceWritePlan&)`
-  - `std::vector<DeviceValue> decode(const DeviceReadPlan&, std::span<const std::uint16_t>)`
-  - 文字列や浮動小数点のエンコード/デコードでエラーチェック (桁数、NaN、範囲) を実施。
+- `SessionConfig` — 接続パラメータ構造体 (IP, Port, Network, PC, DestIO, DestSta, Timeout)。✅ 実装済
+  - **検証メソッド（実装済）**: `isValid()`, `validate()`, `getValidationErrors()`
+- `McClient` クラス ✅ 実装済
+  - `connect(const SessionConfig&)` ✅
+  - `disconnect()` ✅
+  - **依存性注入コンストラクタ（実装済）**: テスト用にTransport/Encoder/Decoderを注入可能
+  - `setAccessOption(const AccessOption&)` — `Type3E.setaccessopt` に相当。✅
+  - `readWords(DeviceRange range)` / `readBits(DeviceRange range)` ✅
+  - `writeWords(DeviceRange range, span<uint16_t> values)` / `writeBits(...)` ✅
+  - `randomRead(const DeviceReadPlan&)` / `randomWrite(const DeviceWritePlan&)` ✅
+  - `applyRuntimeControl(const RuntimeControl&)` — Run/Stop/Pause/Reset/LatchClearを統一インターフェースで実行 ✅
+  - `remoteLock(const std::string& password)`, `remoteUnlock(...)` 🔲 未実装
+  - `readCpuType() -> CpuInfo` ✅
+- `DeviceRange` / `RandomDeviceRequest` 等のヘルパ構造を用意。✅ 実装済
+  - **ヘルパー関数（実装済）**: `makeDeviceAddress()`, `makeDeviceRange()`, `getDeviceType()` など
+- 例外型: 標準例外 (`std::invalid_argument`, `std::runtime_error`) を使用。✅ 実装済
+- `ValueFormat` 列挙 (例: `Int8/16/32/64`, `UInt8/16/32/64`, `Float32/64`, `BitArray(n)`) と `DeviceValue` (`std::variant` ベース) を定義。✅ 実装済
+- Value Codec 層の公開インターフェース: ✅ 実装済
+  - `std::vector<std::uint16_t> encode(const DeviceWritePlan&, const std::vector<DeviceValue>&)`
+  - `std::vector<DeviceValue> decode(const DeviceReadPlan&, const std::vector<std::uint16_t>&)`
+  - 浮動小数点のエンコード/デコードでエラーチェック (桁数、NaN、範囲) を実施。
 
 ## 9. プロトコル詳細 (3E バイナリ)
 - フレーム構成: サブヘッダー (2B) / ネットワーク (1B) / PC (1B) / モジュール I/O (2B) / ステーション (1B) / データ長 (2B) / タイマー (2B) / コマンド + サブコマンド (各2B) / 要求データ。
@@ -104,14 +106,15 @@
 - MC コマンド `0x0406` (ランダム読出し)、`0x1406` (ランダム書込み) を使用。libslmp `intmem_codec.h`／pymcprotocol `randomread` 実装を参照。
 - 単一要求で複数デバイス (ビット/ワード混在可能) を扱い、最大デバイス数とデータ長はプロトコル仕様に従う (iQ-R では 960 ワード程度)。
 - 応答データは要求順で返却されるため、コール側で整列。
-- `DeviceReadPlan`: `(DeviceAddress, ValueFormat)` の配列。Value Codec 層がフレームペイロードから `std::vector<DeviceValue>` (内部は `std::variant<int16_t, std::uint32_t, float, double, std::string, std::vector<std::byte>>` など) を生成。
+- `DeviceReadPlan`: `(DeviceAddress, ValueFormat)` の配列。Value Codec 層がフレームペイロードから `std::vector<DeviceValue>` (内部は `std::variant<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double, std::vector<bool>>`) を生成。
 - `DeviceWritePlan`: 書込時も `(DeviceAddress, DeviceValue)` で受け取り、Value Codec 層が MC プロトコルのワード列へ変換。
 - 異なる型が混在した要求を許容し、Value Codec 層がそれぞれの `ValueFormat` を用いて変換することでアプリケーションからは統一的な API で扱えるようにする。
-- 現行実装ではランダムビット書き込みは未対応（例外で通知）。ワード／ダブルワードのランダム書き込み／読出しはサポート済みで、ビット対応は今後の拡張候補。
+- **64bit対応（実装済）**: ワード(16bit)、ダブルワード(32bit)に加えて、ロングワード(64bit)のランダム読み書きに対応。Int64/UInt64/Float64フォーマットをサポート。
+- **ビットデバイスランダムアクセス（実装済）**: X/Y/M/L等のビットデバイスをランダムアクセス可能。各ビットは1ワードとして扱われる（MCプロトコル仕様）。BitArray(1)フォーマットで単一ビット読み書きに対応。
 
 ## 11. ランタイム操作仕様
 - コマンドコードは libslmp `remctrl.h` および pymcprotocol `remote_run` 実装を参照。
-- `remote_run` は `clear_mode` や `force_exec` をオプション化。
+- `remote_run` は `clear_mode` や `force_exec` をオプション化。**ClearMode enum class（実装済）**: `NoClear`, `ClearExceptLatch`, `ClearAll` の3種類の enum class として実装し、型安全性を確保。
 - `remote_unlock` は ASCII/Binary の両表現に対応し、パスワードは ASCII コードで送信。
 - iQ-R でのロック解除時は 16 文字 (32 文字) の ASCII 送信が可能である点を考慮。
 - E71 経由でない直接接続の場合、`C059` (機能未サポート) が返却されるため、エラーコードに応じたメッセージを提供。
@@ -138,8 +141,55 @@
 - OPC UA / MQTT ブリッジとの連携。
 - CLI / GUI ツール提供によるデバッグ支援。
 
-## 16. マイルストーン案
-1. プロトコルコア (Transport + Codec) 実装とユニットテスト整備。
-2. 逐次読書き API とランタイム操作の実装、モックテスト。
-3. ランダムアクセス API と実機評価。
-4. ロギング／設定機構、ドキュメント整備。
+## 16. 実装状況とマイルストーン
+
+### 完了項目 ✅
+1. **プロトコルコア (Transport + Codec)** — 実装完了、ユニットテスト完備
+   - TcpTransport: TCP/IP通信層の実装
+   - FrameEncoder/FrameDecoder: 3Eフレームのエンコード/デコード
+   - ValueCodec: 11種類のデータ型サポート
+
+2. **逐次読書き API** — 実装完了
+   - `readWords()`, `readBits()`, `writeWords()`, `writeBits()`
+   - バッチアクセス機能の完全実装
+
+3. **ランダムアクセス API** — 実装完了、拡張機能追加済
+   - `randomRead()`, `randomWrite()`
+   - 64bit (LongWord) デバイス対応
+   - ビットデバイスランダムアクセス対応
+   - 混在型デバイス読み書き
+
+4. **ランタイム操作** — 実装完了
+   - `applyRuntimeControl()`: Run/Stop/Pause/Reset/LatchClear
+   - `readCpuType()`: CPU情報読み取り
+   - ClearMode enum class による型安全な実装
+
+5. **設定検証機能** — 実装完了
+   - SessionConfig検証 (`isValid()`, `validate()`, `getValidationErrors()`)
+   - 包括的なパラメータチェック
+
+6. **デバイスカタログ** — 実装完了
+   - ヘルパー関数群: `getDeviceType()`, `isValidDeviceName()`, `normalizeDeviceName()`, `makeDeviceAddress()`, `makeDeviceRange()`
+
+7. **テスト整備** — 実装完了
+   - ユニットテスト: test_value_codec, test_frame_codec, test_session_config
+   - 統合テスト: test_mc_client, test_transport_loopback
+   - モックサーバーによる包括的テスト
+
+8. **ドキュメント整備** — 実装完了
+   - 全ヘッダーファイルの日本語ドキュメント化
+   - README.md: 詳細なAPI使用例と応用例
+   - spec.md: 実装状況の反映
+
+### 未実装項目 🔲
+1. **パスワード管理** — `remoteLock()`, `remoteUnlock()` 未実装
+2. **診断/ロギング機能** — フレームHEXダンプ、操作ログ、リトライ履歴
+3. **設定ファイル対応** — YAML/JSON設定のロード（現在はプログラムAPIのみ）
+4. **4Eフレーム対応** — 現在は3Eフレームのみ
+5. **UDP対応** — 現在はTCP/IPのみ
+
+### 今後の拡張候補
+- 複数セッションの接続プール化
+- OPC UA / MQTT ブリッジ連携
+- CLI / GUI デバッグツール
+- 性能プロファイリング機能

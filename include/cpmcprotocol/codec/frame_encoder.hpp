@@ -13,7 +13,7 @@ class FrameEncoder {
 public:
     FrameEncoder();
 
-    // TODO: define encode interfaces for read/write/random operations
+    // Encode interfaces for MC protocol operations
     std::vector<std::uint8_t> makeBatchReadRequest(const SessionConfig& config, const DeviceRange& range) const;
     std::vector<std::uint8_t> makeBatchWriteRequest(const SessionConfig& config, const DeviceRange& range, const std::vector<std::uint16_t>& data) const;
     std::vector<std::uint8_t> makeRandomReadRequest(const SessionConfig& config, const RandomDeviceRequest& request) const;
@@ -21,7 +21,13 @@ public:
                                                      const RandomDeviceRequest& request,
                                                      const std::vector<std::uint16_t>& word_data,
                                                      const std::vector<std::uint32_t>& dword_data,
+                                                     const std::vector<std::uint64_t>& lword_data,
                                                      const std::vector<bool>& bit_data) const;
+    std::vector<std::uint8_t> makeSimpleCommand(const SessionConfig& config,
+                                                std::uint16_t command,
+                                                std::uint16_t subcommand,
+                                                const std::vector<std::uint8_t>& binary_payload,
+                                                const std::string& ascii_payload) const;
 
 private:
     DeviceCodeMap device_code_map_;
