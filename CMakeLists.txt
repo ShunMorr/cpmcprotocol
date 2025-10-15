@@ -4,6 +4,10 @@ project(cpmcprotocol LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Build options - Default OFF when used as a submodule
+option(CPMCPROTOCOL_BUILD_SAMPLES "Build sample applications" OFF)
+option(CPMCPROTOCOL_BUILD_TESTS "Build test suite" OFF)
+
 add_library(cpmcprotocol
     src/mc_client.cpp
     src/transport.cpp
@@ -68,5 +72,11 @@ install(EXPORT cpmcprotocolTargets
     DESTINATION lib/cmake/cpmcprotocol
 )
 
-add_subdirectory(samples/monitor_client)
-add_subdirectory(tests)
+# Conditionally build samples and tests
+if(CPMCPROTOCOL_BUILD_SAMPLES)
+    add_subdirectory(samples/monitor_client)
+endif()
+
+if(CPMCPROTOCOL_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

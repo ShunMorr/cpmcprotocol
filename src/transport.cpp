@@ -16,9 +16,18 @@
 #include <cerrno>
 
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
 #else
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -61,11 +70,11 @@ std::string lastSocketErrorMessage(int code) {
 }
 
 std::string addrInfoErrorMessage(int code) {
-    char buf[512] = {};
-    if (gai_strerror_s(buf, sizeof(buf), code) != 0) {
-        return "getaddrinfo failed with code " + std::to_string(code);
+    const char* msg = ::gai_strerrorA(code);
+    if (msg == nullptr) {
+        return std::string("getaddrinfo failed with code ") + std::to_string(code);
     }
-    return std::string(buf);
+    return std::string(msg);
 }
 
 void closeSocket(SocketHandle socket) {
