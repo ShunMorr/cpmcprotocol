@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(CPMCPROTOCOL_BUILD_SAMPLES "Build sample applications" OFF)
 option(CPMCPROTOCOL_BUILD_TESTS "Build test suite" OFF)
 
-add_library(cpmcprotocol
+add_library(cpmcprotocol STATIC
     src/mc_client.cpp
     src/transport.cpp
     src/runtime_control.cpp
